@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract PayPerView {
+    address public owner;
+    uint public viewPrice;
+
+    struct Content {
+        address payable creator;
+        string contentHash;
+        mapping(address => bool) viewers;
+    }
+
+    mapping(uint => Content) public contents;
+    uint public contentCount;
+
+    constructor(uint _viewPrice) {
+        owner = msg.sender;
+        viewPrice = _viewPrice; // price to view any content
+    }
+
+    function uploadContent(string memory _contentHash) public {
+        contentCount++;
+        Content storage newContent = contents[contentCount];
+        newContent.creator = payable(msg.sender);
+        newContent.contentHash = _contentHash;
+    }
+
+    function viewContent(uint _contentId) public payable returns (string memory) {
+        require(_contentId > 0 && _contentId <= contentCount, "Content does not exist");
+        Content storage content = contents[_contentId];
+        require(msg.value >= viewPrice, "Insufficient payment");
+
+        content.creator.transfer(msg.value);
+        content.viewers[msg.sender] = true;
+
+        return content.contentHash;
+    }
+
+    function hasAccess(uint _contentId, address _user) public view returns (bool) {
+        return contents[_contentId].viewers[_user];
+    }
+}
